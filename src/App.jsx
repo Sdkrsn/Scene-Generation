@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import * as THREE from 'three';
-import { fromArrayBuffer } from "geotiff";
+import * as GeoTIFF from 'geotiff';
 import "./App.css";
 
 function App() {
@@ -19,6 +19,8 @@ function App() {
 
   const mountRef = useRef(null);
   const [error, setError] = useState(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [loading, setLoading] = useState(false);
   
   // Three.js objects
   const sceneRef = useRef(new THREE.Scene());
@@ -27,14 +29,9 @@ function App() {
   const planeRef = useRef(null);
   const parentObjectRef = useRef(null);
   
-  // Center coordinates (same as Module-2)
+  // Center coordinates
   const centerLat = 12.9611;
   const centerLon = 77.6532;
-  
-  // Initial position, rotation, and scale (same as Module-2)
-  const initialPosition = { x: 16, y: -10, z: 0 };
-  const initialRotation = { x: 0, y: 0, z: 0 };
-  const initialScale = { x: 12, y: 10, z: 1 };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -44,43 +41,44 @@ function App() {
     }));
   };
 
-  // Initialize Three.js scene (similar to Module-2)
+  // Initialize Three.js scene
   const initThreeJS = () => {
     const scene = sceneRef.current;
     const mount = mountRef.current;
     
-    // Camera setup
-    const camera = new THREE.PerspectiveCamera(75, mount.clientWidth / mount.clientHeight, 0.1, 1000);
-    camera.position.z = 5;
+    // Camera setup - position it to see the plane properly
+    const camera = new THREE.PerspectiveCamera(60, mount.clientWidth / mount.clientHeight, 0.1, 10000);
+    camera.position.set(0, 0, 1000);
+    camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
     
     // Renderer setup
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(mount.clientWidth, mount.clientHeight);
-    renderer.setClearColor(0x87ceeb); // Blue background like Module-2
+    renderer.setClearColor(0x87ceeb);
     mount.appendChild(renderer.domElement);
     rendererRef.current = renderer;
     
-    // Create parent object for the image (like Module-2)
+    // Create parent object for the image
     const parentObject = new THREE.Object3D();
     scene.add(parentObject);
     parentObjectRef.current = parentObject;
     
     // Create plane for the image
-    const geometry = new THREE.PlaneGeometry(5, 5);
+    const geometry = new THREE.PlaneGeometry(1, 1);
     const material = new THREE.MeshBasicMaterial({
       color: 0xffffff,
       side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 1
     });
     const plane = new THREE.Mesh(geometry, material);
-    
-    // Set initial position, rotation, and scale
-    plane.position.set(initialPosition.x, initialPosition.y, initialPosition.z);
-    plane.rotation.set(initialRotation.x, initialRotation.y, initialRotation.z);
-    plane.scale.set(initialScale.x, initialScale.y, initialScale.z);
-    
     parentObject.add(plane);
     planeRef.current = plane;
+    
+    // Add axes helper for debugging
+    const axesHelper = new THREE.AxesHelper(100);
+    scene.add(axesHelper);
     
     // Animation loop
     const animate = () => {
@@ -92,116 +90,179 @@ function App() {
 
   // Load and process GeoTIFF image
   const loadGeoTIFF = async () => {
+    setLoading(true);
+    setError(null);
+    setImageLoaded(false);
+    
     try {
-      const response = await fetch("aa.tiff");
-      if (!response.ok) throw new Error(`Failed to fetch image, status ${response.status}`);
-      
+      const response = await fetch("sample.tif");
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const arrayBuffer = await response.arrayBuffer();
-      const tiff = await fromArrayBuffer(arrayBuffer);
+      
+      let tiff;
+      try {
+        tiff = await GeoTIFF.fromArrayBuffer(arrayBuffer);
+      } catch (geoTiffError) {
+        console.warn("Failed to parse as GeoTIFF, trying as regular TIFF", geoTiffError);
+        tiff = await GeoTIFF.fromArrayBuffer(arrayBuffer, { forceXHR: true, ignoreGeoTIFF: true });
+      }
+
       const image = await tiff.getImage();
-      const rasters = await image.readRasters();
+      const raster = await image.readRasters();
       const width = image.getWidth();
       const height = image.getHeight();
       
-      // Create canvas from the image data
+      // Create canvas and context
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d');
-      const imgData = ctx.createImageData(width, height);
       
-      // Process image data (simplified version of your original)
-      const bandCount = rasters.length;
-      if (bandCount >= 3) {
-        // RGB image
-        for (let i = 0; i < width * height; i++) {
-          imgData.data[i * 4 + 0] = rasters[0][i]; // R
-          imgData.data[i * 4 + 1] = rasters[1][i]; // G
-          imgData.data[i * 4 + 2] = rasters[2][i]; // B
-          imgData.data[i * 4 + 3] = 255; // Alpha
+      // Process the image data
+      const imageData = ctx.createImageData(width, height);
+      const data = imageData.data;
+      
+      if (raster.length === 1) {
+        // Grayscale image
+        const rasterData = raster[0];
+        for (let i = 0; i < rasterData.length; i++) {
+          const val = rasterData[i];
+          data[i * 4] = val;     // R
+          data[i * 4 + 1] = val; // G
+          data[i * 4 + 2] = val; // B
+          data[i * 4 + 3] = 255; // A
         }
       } else {
-        // Grayscale image
-        for (let i = 0; i < width * height; i++) {
-          const val = rasters[0][i];
-          imgData.data[i * 4 + 0] = val; // R
-          imgData.data[i * 4 + 1] = val; // G
-          imgData.data[i * 4 + 2] = val; // B
-          imgData.data[i * 4 + 3] = 255; // Alpha
+        // RGB or RGBA image
+        for (let i = 0; i < data.length; i += 4) {
+          data[i] = raster[0][i / 4];     // R
+          data[i + 1] = raster[1][i / 4]; // G
+          data[i + 2] = raster[2][i / 4]; // B
+          data[i + 3] = raster.length > 3 ? raster[3][i / 4] : 255; // A
         }
       }
       
-      ctx.putImageData(imgData, 0, 0);
+      ctx.putImageData(imageData, 0, 0);
       
       // Create Three.js texture from canvas
       const texture = new THREE.CanvasTexture(canvas);
       if (planeRef.current) {
+        // Update plane geometry to match image aspect ratio
+        const aspectRatio = width / height;
+        planeRef.current.geometry.dispose();
+        planeRef.current.geometry = new THREE.PlaneGeometry(aspectRatio, 1);
+        
+        // Apply texture
         planeRef.current.material.map = texture;
         planeRef.current.material.needsUpdate = true;
+        setImageLoaded(true);
+        
+        // Scale the plane to a reasonable size (reduced from 100 to 30)
+        const scale = 30;
+        planeRef.current.scale.set(scale, scale, scale);
+      }
+      
+      // Try to get geographic metadata if available
+      try {
+        const geoKeys = image.getGeoKeys();
+        const tiepoint = image.getTiePoints();
+        const pixelScale = image.getPixelScale();
+        console.log('GeoTIFF Metadata:', { geoKeys, tiepoint, pixelScale });
+      } catch (metaError) {
+        console.log('No geographic metadata found in image');
       }
       
     } catch (err) {
-      setError("Failed to load image: " + err.message);
-      console.error(err);
+      console.error("Image loading error:", err);
+      setError(`Failed to load image: ${err.message}. Please ensure the file is a valid TIFF/GeoTIFF.`);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Update scene based on parameters (similar to Module-2's generateOutput)
+  // Update scene based on parameters
   const updateScene = () => {
-    if (!parentObjectRef.current || !cameraRef.current) return;
+    if (!parentObjectRef.current || !cameraRef.current) {
+      setError("Three.js scene not initialized");
+      return;
+    }
+    
+    if (!imageLoaded) {
+      setError("Please wait for the image to load first");
+      return;
+    }
     
     const { latitude, longitude, altitude, pan, tilt, focalLength, pixelSizeY, height } = params;
     
-    // Validate inputs (like Module-2)
+    // Validate inputs
     if (latitude < 12.5 || latitude > 13.5 || longitude < 77.0 || longitude > 78.0) {
       setError("Latitude must be between 12.5-13.5 and Longitude between 77.0-78.0");
       return;
     }
     setError(null);
     
-    // Calculate relative movement from center (like Module-2)
-    const latDiff = (latitude - centerLat) * 1000;
-    const lonDiff = (longitude - centerLon) * 1000;
+    // Calculate relative movement from center (reduced multiplier from 1000 to 50)
+    const latDiff = (latitude - centerLat) * 50;
+    const lonDiff = (longitude - centerLon) * 50;
     
-    // Apply transformations to parent object (like Module-2)
+    // Apply transformations to parent object
     const parent = parentObjectRef.current;
-    parent.position.x = lonDiff;
-    parent.position.y = -latDiff;
-    parent.rotation.y = THREE.MathUtils.degToRad(pan);
-    parent.rotation.x = THREE.MathUtils.degToRad(tilt);
+    parent.position.set(lonDiff, -latDiff, 0);
+    parent.rotation.set(
+      THREE.MathUtils.degToRad(tilt),
+      THREE.MathUtils.degToRad(pan),
+      0
+    );
     
-    // Adjust scale based on altitude (like Module-2)
-    const scale = 1000 / altitude;
+    // Adjust scale based on altitude (reduced scaling effect)
+    const scale = (1000 / altitude) * 0.3; // Reduced multiplier from 0.5 to 0.3
     parent.scale.set(scale, scale, scale);
     
-    // Update camera FOV based on focal length and pixel size (like Module-2)
+    // Update camera FOV based on focal length and pixel size
     const sensorHeight = pixelSizeY * height;
     const fov = 2 * Math.atan(sensorHeight / (2 * focalLength)) * (180 / Math.PI);
     cameraRef.current.fov = fov;
     cameraRef.current.updateProjectionMatrix();
+    
+    // Adjust camera position based on altitude (less aggressive zoom)
+    const cameraDistance = 500 + (altitude * 0.1); // Reduced multiplier from 0.2 to 0.1
+    cameraRef.current.position.z = cameraDistance;
+    cameraRef.current.lookAt(0, 0, 0);
   };
 
-  // Export image function (similar to Module-2)
+  // Export image function
   const exportImage = () => {
-    if (!rendererRef.current || !cameraRef.current) return;
+    if (!rendererRef.current || !cameraRef.current) {
+      setError("Three.js scene not initialized");
+      return;
+    }
+    
+    if (!imageLoaded) {
+      setError("Please wait for the image to load first");
+      return;
+    }
     
     const { width, height } = params;
     const renderer = rendererRef.current;
     
-    // Create temporary renderer
-    const tempRenderer = new THREE.WebGLRenderer({
-      antialias: true,
-      preserveDrawingBuffer: true,
-    });
-    tempRenderer.setSize(width, height);
-    tempRenderer.setClearColor(0x87ceeb);
-    tempRenderer.render(sceneRef.current, cameraRef.current);
+    // Temporarily change renderer size
+    const originalSize = renderer.getSize(new THREE.Vector2());
+    renderer.setSize(width, height);
+    
+    // Render the scene
+    renderer.render(sceneRef.current, cameraRef.current);
     
     // Create download link
     const link = document.createElement('a');
     link.download = 'synthetic_image.png';
-    link.href = tempRenderer.domElement.toDataURL('image/png');
+    link.href = renderer.domElement.toDataURL('image/png');
     link.click();
+    
+    // Restore original size
+    renderer.setSize(originalSize.x, originalSize.y);
   };
 
   // Initialize Three.js on mount
@@ -216,10 +277,26 @@ function App() {
     };
   }, []);
   
+  // Add resize handler for responsive Three.js canvas
+  useEffect(() => {
+    const handleResize = () => {
+      if (rendererRef.current && mountRef.current) {
+        const width = mountRef.current.clientWidth;
+        const height = mountRef.current.clientHeight;
+        rendererRef.current.setSize(width, height);
+        cameraRef.current.aspect = width / height;
+        cameraRef.current.updateProjectionMatrix();
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Update scene when parameters change
   useEffect(() => {
     updateScene();
-  }, [params]);
+  }, [params, imageLoaded]);
 
   return (
     <div className="app-container">
@@ -366,13 +443,21 @@ function App() {
           <fieldset className="camera-view">
             <legend>Camera View</legend>
             
+            {loading && <div className="loading-message">Loading image...</div>}
             {error && <div className="error-message">{error}</div>}
             
             <div className="canvas-container" ref={mountRef}></div>
             
             <div className="button-container">
-              <button onClick={updateScene}>Generate</button>
-              <button onClick={exportImage}>Export</button>
+              <button onClick={updateScene} disabled={loading || !imageLoaded}>
+                Generate
+              </button>
+              <button onClick={exportImage} disabled={loading || !imageLoaded}>
+                Export
+              </button>
+              <button onClick={loadGeoTIFF} disabled={loading}>
+                Reload Image
+              </button>
             </div>
           </fieldset>
         </div>

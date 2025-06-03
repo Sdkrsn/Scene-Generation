@@ -1,4 +1,4 @@
-/* Base styles - keeping your dark theme */
+/* Updated CSS for better Three.js canvas display */
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: #000000;
@@ -8,30 +8,31 @@ body {
   height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow: hidden;
 }
 
 .app-container {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  padding: 20px;
+  padding: 10px;
   box-sizing: border-box;
 }
 
 h1 {
   text-align: center;
-  margin-bottom: 20px;
+  margin: 10px 0;
   font-weight: 700;
   color: #ffffff;
   text-shadow: 0 0 6px rgba(0, 150, 255, 0.7);
+  font-size: 1.5rem;
 }
 
 .main-container {
   display: flex;
   flex: 1;
-  gap: 20px;
-  height: calc(100% - 60px);
+  gap: 10px;
+  height: calc(100% - 50px);
+  flex-direction: column;
 }
 
 /* Left section - Parameters */
@@ -39,46 +40,55 @@ h1 {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 10px;
   overflow-y: auto;
-  padding-right: 10px;
+  padding-right: 5px;
 }
 
 /* Right section - Camera View */
 .right-section {
-  flex: 1;
+  flex: 2; /* Give more space to the camera view */
   display: flex;
   flex-direction: column;
+  min-height: 300px;
 }
 
 .parameter-group, .camera-view {
   background: #121212;
   border: 2px solid #007bff;
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: 8px;
+  padding: 10px;
   box-shadow: 0 0 8px rgba(0, 150, 255, 0.3);
+  height: 100%; /* Ensure it takes full height */
+  display: flex;
+  flex-direction: column;
+}
+
+.camera-view {
+  position: relative; /* For absolute positioning of canvas container */
 }
 
 .parameter-group {
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 legend {
   font-weight: bold;
   color: #007bff;
-  padding: 5px 10px;
+  padding: 3px 8px;
   border: 2px solid #007bff;
   border-radius: 5px;
   background-color: #121212;
+  font-size: 0.9rem;
 }
 
 .input-group {
-  margin-bottom: 15px;
+  margin-bottom: 10px;
 }
 
 .input-group.horizontal {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
 .input-group.horizontal > div {
@@ -87,19 +97,24 @@ legend {
 
 label {
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 3px;
   font-weight: 600;
   color: #aad4ff;
+  font-size: 0.8rem;
 }
 
 input[type="number"] {
   width: 100%;
-  padding: 8px;
+  padding: 6px;
   border: 1px solid #003366;
-  border-radius: 6px;
+  border-radius: 4px;
   background: #111;
   color: #fff;
   box-sizing: border-box;
+  font-size: 0.8rem;
+  min-height: 30px;
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
 }
 
 input[type="number"]:focus {
@@ -109,53 +124,75 @@ input[type="number"]:focus {
 }
 
 .canvas-container {
+  flex: 1; /* Take all available space */
   width: 100%;
-  height: 400px;
+  min-height: 300px; /* Minimum height to ensure visibility */
   border: 1px solid #003366;
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
   background-color: #87ceeb;
   position: relative;
 }
 
+/* Ensure Three.js canvas fills its container */
+.canvas-container canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 .button-container {
   display: flex;
-  gap: 10px;
-  margin-top: 15px;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 button {
-  padding: 10px 20px;
+  padding: 8px 12px;
   border: none;
-  border-radius: 5px;
+  border-radius: 4px;
   background-color: #007bff;
   color: white;
   cursor: pointer;
   flex: 1;
   font-weight: bold;
   transition: background-color 0.3s;
+  font-size: 0.8rem;
 }
 
 button:hover {
   background-color: #0056b3;
 }
 
+button:disabled {
+  background-color: #555;
+  cursor: not-allowed;
+}
+
 .error-message {
   color: #ff5555;
   background-color: #330000;
-  padding: 10px;
-  border-radius: 5px;
-  margin-bottom: 15px;
-  display: none;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.8rem;
 }
 
-.error-message.show {
-  display: block;
+.loading-message {
+  color: #55ff55;
+  background-color: #003300;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 0.8rem;
 }
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -164,9 +201,49 @@ button:hover {
 
 ::-webkit-scrollbar-thumb {
   background: #007bff;
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: #0056b3;
+}
+
+/* Media query for larger screens */
+@media (min-width: 768px) {
+  .main-container {
+    flex-direction: row;
+  }
+  
+  h1 {
+    font-size: 2rem;
+    margin-bottom: 20px;
+  }
+  
+  .parameter-group, .camera-view {
+    padding: 20px;
+    border-radius: 12px;
+  }
+  
+  legend {
+    font-size: 1rem;
+    padding: 5px 10px;
+  }
+  
+  label {
+    font-size: 0.9rem;
+  }
+  
+  input[type="number"] {
+    padding: 8px;
+    font-size: 0.9rem;
+  }
+  
+  button {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+  }
+  
+  .error-message, .loading-message {
+    font-size: 0.9rem;
+  }
 }
