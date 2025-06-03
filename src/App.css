@@ -1,112 +1,172 @@
+/* Base styles - keeping your dark theme */
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: #000000;
   color: #eee;
   margin: 0;
-  padding: 20px;
+  padding: 0;
+  height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
 }
 
-.container {
-  max-width: 1000px;
-  margin: auto;
-  padding: 10px;
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 h1 {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 20px;
   font-weight: 700;
-  font-size: 2.8rem;
-  letter-spacing: 1.2px;
   color: #ffffff;
   text-shadow: 0 0 6px rgba(0, 150, 255, 0.7);
 }
 
-.panel-container {
+.main-container {
   display: flex;
-  flex-wrap: wrap;
-  gap: 24px;
-  justify-content: center;
-}
-
-.panel {
-  background: #121212;
-  padding: 24px;
-  border-radius: 12px;
   flex: 1;
-  min-width: 320px;
-  max-width: 460px;
-  box-shadow:
-    0 0 8px rgba(0, 150, 255, 0.3),
-    inset 0 0 10px #002a50;
-  transition: box-shadow 0.3s ease;
+  gap: 20px;
+  height: calc(100% - 60px);
 }
 
-.panel:hover {
-  box-shadow:
-    0 0 16px rgba(0, 200, 255, 0.6),
-    inset 0 0 15px #004080;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-top: 12px;
-}
-
-.form-group {
+/* Left section - Parameters */
+.left-section {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  margin-bottom: 14px;
+  gap: 20px;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+/* Right section - Camera View */
+.right-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.parameter-group, .camera-view {
+  background: #121212;
+  border: 2px solid #007bff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 0 8px rgba(0, 150, 255, 0.3);
+}
+
+.parameter-group {
+  margin-bottom: 20px;
+}
+
+legend {
+  font-weight: bold;
+  color: #007bff;
+  padding: 5px 10px;
+  border: 2px solid #007bff;
+  border-radius: 5px;
+  background-color: #121212;
+}
+
+.input-group {
+  margin-bottom: 15px;
+}
+
+.input-group.horizontal {
+  display: flex;
+  gap: 10px;
+}
+
+.input-group.horizontal > div {
+  flex: 1;
 }
 
 label {
+  display: block;
+  margin-bottom: 5px;
   font-weight: 600;
-  margin-bottom: 6px;
   color: #aad4ff;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  font-size: 0.85rem;
 }
 
-input[type="number"],
-input[type="file"] {
-  padding: 8px 10px;
-  border: 1.8px solid #003366;
+input[type="number"] {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #003366;
   border-radius: 6px;
   background: #111;
   color: #fff;
-  font-size: 1rem;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  box-sizing: border-box;
 }
 
-input[type="number"]:focus,
-input[type="file"]:focus {
+input[type="number"]:focus {
   outline: none;
   border-color: #00aaff;
   box-shadow: 0 0 6px #00aaff;
-  background: #001f33;
 }
 
-.canvas-panel {
-  margin-top: 40px;
-  background: #121212;
-  padding: 24px;
-  border-radius: 12px;
-  text-align: center;
-  box-shadow:
-    0 0 12px rgba(0, 150, 255, 0.4);
-    transition: box-shadow 0.3s ease;
-}
-
-canvas {
+.canvas-container {
+  width: 100%;
+  height: 400px;
+  border: 1px solid #003366;
   border-radius: 10px;
-  box-shadow: 0 0 14px #007acc88;
-  max-width: 100%;
-  height: auto;
-  background: #000;
-  display: inline-block;
+  overflow: hidden;
+  background-color: #87ceeb;
+  position: relative;
+}
+
+.button-container {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+  flex: 1;
+  font-weight: bold;
+  transition: background-color 0.3s;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+.error-message {
+  color: #ff5555;
+  background-color: #330000;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 15px;
+  display: none;
+}
+
+.error-message.show {
+  display: block;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #121212;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #007bff;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #0056b3;
 }
