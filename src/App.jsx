@@ -15,7 +15,7 @@ function App() {
     pixelSizeY: 0.000035,
     width: 640,
     height: 480,
-    saturation: 1.2,
+    saturation: 2.3,
     sharpness: 1.2,
   });
 
