@@ -180,7 +180,7 @@ input[type="number"]:focus {
   width: 100%;
   border-radius: 6px;
   overflow: hidden;
-  background: linear-gradient(135deg, #0a2e38, #0a0e24);
+  background: #00aaff;
   position: relative;
   min-height: 0;
   box-shadow: 0 0 20px rgba(0, 247, 255, 0.3);
@@ -194,7 +194,7 @@ input[type="number"]:focus {
   right: -2px;
   bottom: -2px;
   background: linear-gradient(45deg, 
-    #00f7ff, #007bff, #00f7ff);
+    #c3e155, #007bff, #00f7ff);
   z-index: -1;
   border-radius: 10px;
   opacity: 0.7;
