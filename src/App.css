@@ -47,7 +47,7 @@ h1 {
 
 /* Right section - Camera View */
 .right-section {
-  flex: 2; /* Give more space to the camera view */
+  flex: 2;
   display: flex;
   flex-direction: column;
   min-height: 300px;
@@ -59,13 +59,13 @@ h1 {
   border-radius: 8px;
   padding: 10px;
   box-shadow: 0 0 8px rgba(0, 150, 255, 0.3);
-  height: 100%; /* Ensure it takes full height */
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
 
 .camera-view {
-  position: relative; /* For absolute positioning of canvas container */
+  position: relative;
 }
 
 .parameter-group {
@@ -124,13 +124,13 @@ input[type="number"]:focus {
 }
 
 .canvas-container {
-  flex: 1; /* Take all available space */
+  flex: 1;
   width: 100%;
-  min-height: 300px; /* Minimum height to ensure visibility */
+  min-height: 300px;
   border: 1px solid #003366;
   border-radius: 8px;
   overflow: hidden;
-  background-color: #87ceeb;
+  background-color: #000000;
   position: relative;
 }
 
