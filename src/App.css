@@ -1,13 +1,13 @@
-/* No-scroll UI for camera parameters and view */
+/* Cyberpunk-inspired UI with radiant glow effects */
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: #000000;
+  background: radial-gradient(ellipse at center, #0a0e24 0%, #000000 100%);
   color: #eee;
   margin: 0;
   padding: 0;
   height: 100vh;
   width: 100vw;
-  overflow: hidden; /* Prevent any scrolling */
+  overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -20,16 +20,18 @@ body {
   padding: 10px;
   box-sizing: border-box;
   overflow: hidden;
+  background: rgba(5, 10, 30, 0.3);
 }
 
 h1 {
   text-align: center;
-  margin: 5px 0;
+  margin: 5px 0 10px;
   font-weight: 700;
-  color: #ffffff;
-  text-shadow: 0 0 6px rgba(0, 150, 255, 0.7);
+  color: #00f7ff;
+  text-shadow: 0 0 10px #00f7ff, 0 0 20px rgba(0, 247, 255, 0.5);
   font-size: 1.3rem;
   white-space: nowrap;
+  letter-spacing: 1px;
 }
 
 .main-container {
@@ -45,7 +47,7 @@ h1 {
   flex: 1;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 8px;
   overflow: hidden;
   padding-right: 5px;
 }
@@ -54,18 +56,42 @@ h1 {
 .right-section {
   flex: 1.5;
   display: flex;
-  min-height: 0; /* Crucial for flex item to respect overflow */
+  min-height: 0;
 }
 
 .parameter-group, .camera-view {
-  background: #121212;
-  border: 2px solid #007bff;
-  border-radius: 8px;
+  background: rgba(20, 25, 45, 0.7);
+  border-radius: 6px;
   padding: 8px;
-  box-shadow: 0 0 8px rgba(0, 150, 255, 0.3);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+  box-shadow: 0 0 15px rgba(0, 150, 255, 0.2);
+  border: 1px solid rgba(0, 247, 255, 0.2);
+}
+
+.parameter-group::after, .camera-view::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: linear-gradient(135deg, 
+    rgba(0, 247, 255, 0.3) 0%, 
+    rgba(0, 123, 255, 0.2) 50%, 
+    rgba(0, 247, 255, 0.3) 100%);
+  pointer-events: none;
+  z-index: -1;
+  animation: pulseGlow 4s infinite alternate;
+}
+
+@keyframes pulseGlow {
+  0% { opacity: 0.5; }
+  100% { opacity: 1; }
 }
 
 .camera-view {
@@ -81,7 +107,7 @@ h1 {
   display: grid;
   grid-template-columns: 1fr;
   gap: 8px;
-  overflow: hidden;
+  overflow: auto;
   height: 100%;
 }
 
@@ -94,13 +120,14 @@ h1 {
 
 legend {
   font-weight: bold;
-  color: #007bff;
-  padding: 2px 6px;
-  border: 2px solid #007bff;
-  border-radius: 5px;
-  background-color: #121212;
+  color: #00f7ff;
+  padding: 3px 8px;
+  background: linear-gradient(90deg, rgba(0, 123, 255, 0.2), rgba(0, 247, 255, 0.2));
+  border-radius: 4px;
   font-size: 0.8rem;
   white-space: nowrap;
+  text-shadow: 0 0 5px #00f7ff;
+  border-left: 3px solid #00f7ff;
 }
 
 .input-group {
@@ -109,7 +136,7 @@ legend {
 
 .input-group.horizontal {
   display: flex;
-  gap: 6px;
+  gap: 8px;
 }
 
 .input-group.horizontal > div {
@@ -118,42 +145,65 @@ legend {
 
 label {
   display: block;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
   font-weight: 600;
   color: #aad4ff;
   font-size: 0.7rem;
   white-space: nowrap;
+  text-shadow: 0 0 3px rgba(170, 212, 255, 0.5);
 }
 
 input[type="number"] {
   width: 100%;
-  padding: 5px;
-  border: 1px solid #003366;
+  padding: 6px;
+  border: 1px solid rgba(0, 123, 255, 0.3);
   border-radius: 4px;
-  background: #111;
+  background: rgba(10, 20, 40, 0.7);
   color: #fff;
   box-sizing: border-box;
   font-size: 0.75rem;
   min-height: 28px;
+  transition: all 0.3s;
   -webkit-appearance: none;
   -moz-appearance: textfield;
 }
 
 input[type="number"]:focus {
   outline: none;
-  border-color: #00aaff;
-  box-shadow: 0 0 6px #00aaff;
+  border-color: #00f7ff;
+  box-shadow: 0 0 10px rgba(0, 247, 255, 0.5);
+  background: rgba(15, 30, 60, 0.7);
 }
 
 .canvas-container {
   flex: 1;
   width: 100%;
-  border: 1px solid #003366;
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
-  background-color: #15bee8;
+  background: linear-gradient(135deg, #0a2e38, #0a0e24);
   position: relative;
-  min-height: 0; /* Crucial for flex item */
+  min-height: 0;
+  box-shadow: 0 0 20px rgba(0, 247, 255, 0.3);
+}
+
+.canvas-container::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, 
+    #00f7ff, #007bff, #00f7ff);
+  z-index: -1;
+  border-radius: 10px;
+  opacity: 0.7;
+  animation: rotateGradient 8s linear infinite;
+}
+
+@keyframes rotateGradient {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
 }
 
 .canvas-container canvas {
@@ -167,49 +217,84 @@ input[type="number"]:focus {
 
 .button-container {
   display: flex;
-  gap: 6px;
-  margin-top: 8px;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 button {
-  padding: 6px 10px;
+  padding: 8px 12px;
   border: none;
   border-radius: 4px;
-  background-color: #007bff;
+  background: linear-gradient(135deg, #007bff, #00aaff);
   color: white;
   cursor: pointer;
   flex: 1;
   font-weight: bold;
-  transition: background-color 0.3s;
-  font-size: 0.75rem;
+  transition: all 0.3s;
+  font-size: 0.8rem;
   white-space: nowrap;
+  text-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+  box-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+button::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    to bottom right,
+    rgba(255, 255, 255, 0) 45%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0) 55%
+  );
+  transform: rotate(30deg);
+  transition: all 0.5s;
 }
 
 button:hover {
-  background-color: #0056b3;
+  box-shadow: 0 0 15px rgba(0, 247, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+button:hover::before {
+  left: 100%;
+}
+
+button:active {
+  transform: translateY(0);
 }
 
 button:disabled {
-  background-color: #555;
+  background: linear-gradient(135deg, #555, #777);
+  box-shadow: none;
   cursor: not-allowed;
 }
 
 .error-message {
-  color: #ff5555;
-  background-color: #330000;
-  padding: 6px;
+  color: #ff6b6b;
+  background: rgba(80, 0, 0, 0.5);
+  padding: 8px;
   border-radius: 4px;
-  margin-bottom: 8px;
-  font-size: 0.7rem;
+  margin-bottom: 10px;
+  font-size: 0.75rem;
+  border-left: 3px solid #ff0000;
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.2);
 }
 
 .loading-message {
-  color: #55ff55;
-  background-color: #003300;
-  padding: 6px;
+  color: #6bff6b;
+  background: rgba(0, 80, 0, 0.5);
+  padding: 8px;
   border-radius: 4px;
-  margin-bottom: 8px;
-  font-size: 0.7rem;
+  margin-bottom: 10px;
+  font-size: 0.75rem;
+  border-left: 3px solid #00ff00;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
 }
 
 /* Media query for larger screens */
@@ -220,20 +305,21 @@ button:disabled {
   
   .left-section {
     grid-template-columns: 1fr;
+    gap: 10px;
   }
   
   .parameter-group-content {
     grid-template-columns: 1fr 1fr;
-  gap: 10px;
+    gap: 15px;
   }
   
   h1 {
     font-size: 1.5rem;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
   }
   
   .parameter-group, .camera-view {
-    padding: 10px;
+    padding: 15px;
   }
   
   legend {
@@ -241,45 +327,46 @@ button:disabled {
   }
   
   label {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
   }
   
   input[type="number"] {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
   }
   
   button {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
+    padding: 10px 15px;
   }
 }
 
 /* Ultra-compact mode for very small screens */
 @media (max-height: 600px) {
   .app-container {
-    padding: 5px;
+    padding: 8px;
   }
   
   h1 {
-    font-size: 1.1rem;
-    margin: 2px 0;
+    font-size: 1.2rem;
+    margin: 5px 0;
   }
   
   .parameter-group, .camera-view {
-    padding: 5px;
+    padding: 8px;
   }
   
   label {
-    font-size: 0.65rem;
+    font-size: 0.7rem;
   }
   
   input[type="number"] {
-    padding: 3px;
-    min-height: 24px;
-    font-size: 0.7rem;
+    padding: 6px;
+    min-height: 28px;
+    font-size: 0.75rem;
   }
   
   button {
-    padding: 4px 6px;
-    font-size: 0.7rem;
+    padding: 6px 8px;
+    font-size: 0.75rem;
   }
 }

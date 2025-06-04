@@ -540,9 +540,6 @@ function App() {
               <button onClick={exportImage} disabled={loading || !imageLoaded}>
                 Export HD Image
               </button>
-              <button onClick={loadGeoTIFF} disabled={loading}>
-                Reload Image
-              </button>
             </div>
           </fieldset>
         </div>
