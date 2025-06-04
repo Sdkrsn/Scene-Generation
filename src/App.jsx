@@ -46,7 +46,7 @@ function App() {
     const scene = sceneRef.current;
     const mount = mountRef.current;
     
-    // Camera setup - position it to see the plane properly
+    // Camera setup
     const camera = new THREE.PerspectiveCamera(60, mount.clientWidth / mount.clientHeight, 0.1, 10000);
     camera.position.set(0, 0, 1000);
     camera.lookAt(0, 0, 0);
@@ -160,9 +160,9 @@ function App() {
         planeRef.current.material.needsUpdate = true;
         setImageLoaded(true);
         
-        // Scale the plane to a reasonable size (reduced from 100 to 30)
-        const scale = 30;
-        planeRef.current.scale.set(scale, scale, scale);
+        // Initial scale based on default altitude (300m)
+        const initialScale = 0.033;
+        planeRef.current.scale.set(initialScale, initialScale, initialScale);
       }
       
       // Try to get geographic metadata if available
@@ -204,9 +204,10 @@ function App() {
     }
     setError(null);
     
-    // Calculate relative movement from center (reduced multiplier from 1000 to 50)
-    const latDiff = (latitude - centerLat) * 50;
-    const lonDiff = (longitude - centerLon) * 50;
+    // Calculate relative movement from center
+    // Using more accurate conversion factors
+    const latDiff = (latitude - centerLat) * 111320; // meters per degree latitude
+    const lonDiff = (longitude - centerLon) * 111320 * Math.cos(THREE.MathUtils.degToRad(latitude)); // meters per degree longitude
     
     // Apply transformations to parent object
     const parent = parentObjectRef.current;
@@ -217,20 +218,34 @@ function App() {
       0
     );
     
-    // Adjust scale based on altitude (reduced scaling effect)
-    const scale = (1000 / altitude) * 0.3; // Reduced multiplier from 0.5 to 0.3
+    // Improved altitude scaling
+    // We'll use a simple inverse relationship for scaling
+    // At 1m altitude, scale = 1
+    // At 300m altitude, scale = 0.0033
+    // This creates a natural zoom-out effect as altitude increases
+    const referenceAltitude = 300;
+    const maxScale = 100000;
+    const minScale = 50000;
+    const scale = maxScale * Math.pow(minScale/maxScale, altitude/referenceAltitude);
+    
     parent.scale.set(scale, scale, scale);
     
     // Update camera FOV based on focal length and pixel size
     const sensorHeight = pixelSizeY * height;
     const fov = 2 * Math.atan(sensorHeight / (2 * focalLength)) * (180 / Math.PI);
     cameraRef.current.fov = fov;
-    cameraRef.current.updateProjectionMatrix();
     
-    // Adjust camera position based on altitude (less aggressive zoom)
-    const cameraDistance = 500 + (altitude * 0.1); // Reduced multiplier from 0.2 to 0.1
+    // Adjust camera position based on altitude
+    // We'll make the camera move back proportionally to the altitude
+    // but not as fast as the scaling changes to maintain visibility
+    const baseDistance = 5;
+    const cameraDistance = baseDistance * Math.pow(50, altitude/referenceAltitude);
     cameraRef.current.position.z = cameraDistance;
     cameraRef.current.lookAt(0, 0, 0);
+    
+    // Ensure the plane is always visible by adjusting camera far plane
+    cameraRef.current.far = Math.max(10000, cameraDistance * 5);
+    cameraRef.current.updateProjectionMatrix();
   };
 
   // Export image function
