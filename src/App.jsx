@@ -15,8 +15,8 @@ function App() {
     pixelSizeY: 0.000035,
     width: 640,
     height: 480,
-    saturation: 2.9,
-    sharpness: 1.0,
+    saturation: 1.2,
+    sharpness: 1.2,
   });
 
   const mountRef = useRef(null);
@@ -24,15 +24,12 @@ function App() {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   
-  // Three.js objects
   const sceneRef = useRef(new THREE.Scene());
   const cameraRef = useRef(null);
   const rendererRef = useRef(null);
   const planeRef = useRef(null);
   const parentObjectRef = useRef(null);
-  const skyRef = useRef(null);
   
-  // Center coordinates
   const centerLat = 12.9611;
   const centerLon = 77.6532;
 
@@ -40,7 +37,6 @@ function App() {
     const { name, value } = e.target;
     let numValue = parseFloat(value);
     
-    // Add parameter-specific validation
     if (name === 'altitude') {
       numValue = Math.max(0.1, numValue);
     }
@@ -50,23 +46,59 @@ function App() {
     }));
   };
 
-  // Initialize Three.js scene
+  // Function to clean white marks from image
+  const cleanWhiteMarks = (imageData, threshold = 230) => {
+    const data = imageData.data;
+    const width = imageData.width;
+    const height = imageData.height;
+
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const idx = (y * width + x) * 4;
+        
+        if (data[idx] > threshold && data[idx + 1] > threshold && data[idx + 2] > threshold) {
+          let count = 0;
+          let r = 0, g = 0, b = 0;
+          
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (dx === 0 && dy === 0) continue;
+              
+              const nIdx = ((y + dy) * width + (x + dx)) * 4;
+              if (data[nIdx] <= threshold || data[nIdx + 1] <= threshold || data[nIdx + 2] <= threshold) {
+                r += data[nIdx];
+                g += data[nIdx + 1];
+                b += data[nIdx + 2];
+                count++;
+              }
+            }
+          }
+          
+          if (count > 0) {
+            data[idx] = r / count;
+            data[idx + 1] = g / count;
+            data[idx + 2] = b / count;
+          }
+        }
+      }
+    }
+    
+    return imageData;
+  };
+
   const initThreeJS = () => {
     const scene = sceneRef.current;
     const mount = mountRef.current;
     
-    // Clear previous scene
     while(scene.children.length > 0) { 
       scene.remove(scene.children[0]); 
     }
     
-    // Camera setup
     const aspect = mount.clientWidth / mount.clientHeight;
     const camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
     camera.position.z = 5;
     cameraRef.current = camera;
     
-    // Renderer setup with enhanced settings
     const renderer = new THREE.WebGLRenderer({ 
       antialias: true,
       preserveDrawingBuffer: true,
@@ -79,45 +111,30 @@ function App() {
     mount.appendChild(renderer.domElement);
     rendererRef.current = renderer;
     
-    // Sky with gradient for more realistic look
-    const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
-    const skyMaterial = new THREE.MeshBasicMaterial({
-      color: 0x87ceeb,
-      side: THREE.BackSide,
-      gradientMap: createSkyGradient()
-    });
-    const sky = new THREE.Mesh(skyGeometry, skyMaterial);
-    scene.add(sky);
-    skyRef.current = sky;
-    
-    // Parent object for image
     const parentObject = new THREE.Object3D();
     scene.add(parentObject);
     parentObjectRef.current = parentObject;
     
-    // Plane with improved material
-    const geometry = new THREE.PlaneGeometry(5, 5, 128, 128); // More segments for better deformation
+    const geometry = new THREE.PlaneGeometry(5, 5, 512, 512);
     const material = new THREE.MeshStandardMaterial({
       color: 0xffffff,
       side: THREE.DoubleSide,
-      roughness: 0.8,
-      metalness: 0.0, 
+      roughness: 0.5,
+      metalness: 0.0,
     });
     const plane = new THREE.Mesh(geometry, material);
     plane.position.set(16, -10, 0);
     plane.scale.set(12, 10, 1);
     parentObject.add(plane);
-    planeRef.current = plane;
+    planeRef.current = plane; 
     
-    // Lighting for better color vibrancy
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     scene.add(ambientLight);
     
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
     directionalLight.position.set(1, 1, 1);
     scene.add(directionalLight);
     
-    // Animation loop
     const animate = () => {
       requestAnimationFrame(animate);
       renderer.render(scene, camera);
@@ -125,25 +142,6 @@ function App() {
     animate();
   };
 
-  // Create sky gradient texture
-  const createSkyGradient = () => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1;
-    canvas.height = 256;
-    const ctx = canvas.getContext('2d');
-    
-    const gradient = ctx.createLinearGradient(0, 0, 0, 256);
-    gradient.addColorStop(0, '#1e90ff');
-    gradient.addColorStop(0.5, '#87ceeb');
-    gradient.addColorStop(1, '#e0f7ff');
-    
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 1, 256);
-    
-    return new THREE.CanvasTexture(canvas);
-  };
-
-  // Apply color correction to image data
   const applyColorCorrection = (imageData, saturation, sharpness) => {
     const data = imageData.data;
     const tempCanvas = document.createElement('canvas');
@@ -151,17 +149,12 @@ function App() {
     tempCanvas.height = imageData.height;
     const tempCtx = tempCanvas.getContext('2d');
     
-    // Put original image
     tempCtx.putImageData(imageData, 0, 0);
-    
-    // Apply saturation and vibrance
-    tempCtx.filter = `saturate(${saturation}) contrast(1.1) brightness(1.05)`;
+    tempCtx.filter = `saturate(${saturation}) contrast(1.05) brightness(1.02)`;
     tempCtx.drawImage(tempCanvas, 0, 0);
     
-    // Get corrected data
     const correctedData = tempCtx.getImageData(0, 0, imageData.width, imageData.height);
     
-    // Apply sharpening if needed
     if (sharpness > 1) {
       const sharpenedData = unsharpMask(correctedData, sharpness);
       return sharpenedData;
@@ -170,27 +163,24 @@ function App() {
     return correctedData;
   };
 
-  // Unsharp masking for sharpening
   const unsharpMask = (imageData, amount) => {
     const width = imageData.width;
     const height = imageData.height;
     const srcData = imageData.data;
     const dstData = new Uint8ClampedArray(srcData.length);
     
-    // Simple 3x3 convolution kernel for sharpening
     const kernel = [
-      [-1, -1, -1],
-      [-1,  9, -1],
-      [-1, -1, -1]
+      [0, -0.2, 0],
+      [-0.2, 1.8, -0.2],
+      [0, -0.2, 0]
     ];
     
-    // Adjust kernel strength based on amount
-    const strength = (amount - 1) * 0.5;
-    kernel[1][1] += strength * 8;
+    const strength = (amount - 1) * 0.3;
+    kernel[1][1] += strength;
     
     for (let y = 1; y < height - 1; y++) {
       for (let x = 1; x < width - 1; x++) {
-        for (let c = 0; c < 3; c++) { // Only RGB, not Alpha
+        for (let c = 0; c < 3; c++) {
           let sum = 0;
           for (let ky = -1; ky <= 1; ky++) {
             for (let kx = -1; kx <= 1; kx++) {
@@ -202,14 +192,13 @@ function App() {
           const dstIdx = (y * width + x) * 4 + c;
           dstData[dstIdx] = Math.max(0, Math.min(255, sum));
         }
-        dstData[(y * width + x) * 4 + 3] = 255; // Preserve alpha
+        dstData[(y * width + x) * 4 + 3] = 255;
       }
     }
     
     return new ImageData(dstData, width, height);
   };
 
-  // Load and process GeoTIFF image with enhanced processing
   const loadGeoTIFF = async () => {
     setLoading(true);
     setError(null);
@@ -228,21 +217,16 @@ function App() {
       const width = image.getWidth();
       const height = image.getHeight();
       
-      // Create canvas
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
       
-      // Process the image data
       const imageData = ctx.createImageData(width, height);
       const data = imageData.data;
       
       if (raster.length === 1) {
-        // Grayscale image with contrast enhancement
         const rasterData = raster[0];
-        
-        // Find min and max values for contrast stretching
         let min = Number.MAX_VALUE;
         let max = Number.MIN_VALUE;
         for (let i = 0; i < rasterData.length; i++) {
@@ -251,48 +235,47 @@ function App() {
           if (val > max) max = val;
         }
         
-        // Apply contrast stretching
         const range = max - min;
+        const gamma = 0.9;
         for (let i = 0; i < rasterData.length; i++) {
           const val = rasterData[i];
-          const stretched = ((val - min) / range) * 255;
-          data[i * 4] = stretched;     // R
-          data[i * 4 + 1] = stretched; // G
-          data[i * 4 + 2] = stretched; // B
-          data[i * 4 + 3] = 255;      // A
+          let stretched = ((val - min) / range) * 255;
+          stretched = Math.pow(stretched / 255, gamma) * 255;
+          data[i * 4] = stretched;
+          data[i * 4 + 1] = stretched;
+          data[i * 4 + 2] = stretched;
+          data[i * 4 + 3] = 255;
         }
       } else {
-        // RGB image - apply directly with color correction later
         for (let i = 0; i < data.length; i += 4) {
-          data[i] = raster[0][i / 4];     // R
-          data[i + 1] = raster[1][i / 4]; // G
-          data[i + 2] = raster[2][i / 4]; // B
-          data[i + 3] = raster.length > 3 ? raster[3][i / 4] : 255; // A
+          data[i] = raster[0][i / 4];
+          data[i + 1] = raster[1][i / 4];
+          data[i + 2] = raster[2][i / 4];
+          data[i + 3] = raster.length > 3 ? raster[3][i / 4] : 255;
         }
       }
       
-      // Apply color correction and sharpening
+      // Clean white marks before color correction
+      const cleanedData = cleanWhiteMarks(imageData);
+      
       const correctedData = applyColorCorrection(
-        imageData,
+        cleanedData,
         params.saturation,
         params.sharpness
       );
       ctx.putImageData(correctedData, 0, 0);
       
-      // Create Three.js texture with enhanced settings
       const texture = new THREE.CanvasTexture(canvas);
       texture.anisotropy = rendererRef.current.capabilities.getMaxAnisotropy();
       texture.minFilter = THREE.LinearMipmapLinearFilter;
       texture.magFilter = THREE.LinearFilter;
       texture.generateMipmaps = true;
+      texture.encoding = THREE.sRGBEncoding;
       
       if (planeRef.current) {
-        // Update plane geometry to match image aspect ratio
         const aspectRatio = width / height;
         planeRef.current.geometry.dispose();
-        planeRef.current.geometry = new THREE.PlaneGeometry(aspectRatio * 5, 5, 128, 128);
-        
-        // Apply enhanced texture
+        planeRef.current.geometry = new THREE.PlaneGeometry(aspectRatio * 5, 5, 256, 256);
         planeRef.current.material.map = texture;
         planeRef.current.material.needsUpdate = true;
         setImageLoaded(true);
@@ -306,7 +289,6 @@ function App() {
     }
   };
 
-  // Update scene based on parameters
   const updateScene = () => {
     if (!parentObjectRef.current || !cameraRef.current) {
       setError("Three.js scene not initialized");
@@ -320,18 +302,15 @@ function App() {
     
     const { latitude, longitude, altitude, pan, tilt, focalLength, pixelSizeY, height } = params;
     
-    // Validate inputs
     if (latitude < 12.5 || latitude > 13.5 || longitude < 77.0 || longitude > 78.0) {
       setError("Coordinates must be within Bengaluru area");
       return;
     }
     setError(null);
     
-    // Calculate relative movement from center
     const latDiff = (latitude - centerLat) * 1000;
     const lonDiff = (longitude - centerLon) * 1000;
     
-    // Apply transformations to parent object
     const parent = parentObjectRef.current;
     parent.position.set(lonDiff, -latDiff, 0);
     parent.rotation.set(
@@ -340,22 +319,15 @@ function App() {
       0
     );
     
-    // Adjust scale based on altitude with non-linear scaling for better low-altitude detail
-    const scale = Math.pow(1000 / Math.max(altitude, 10), 0.8);
+    const scale = Math.pow(1000 / Math.max(altitude, 10), 0.85);
     parent.scale.set(scale, scale, scale);
     
-    // Update camera FOV
     const sensorHeight = pixelSizeY * height;
     const fov = 2 * Math.atan(sensorHeight / (2 * focalLength)) * (180 / Math.PI);
     cameraRef.current.fov = fov;
     cameraRef.current.updateProjectionMatrix();
-    
-    // Update sky visibility based on tilt
-    skyRef.current.visible = tilt > 0;
-    rendererRef.current.setClearColor(tilt > 0 || pan>0 ? 0x87ceeb : 0x000000, 1);
   };
 
-  // High-quality export
   const exportImage = () => {
     if (!rendererRef.current || !imageLoaded) {
       setError("Scene not ready for export");
@@ -366,25 +338,28 @@ function App() {
     const originalSize = renderer.getSize(new THREE.Vector2());
     const originalPixelRatio = renderer.getPixelRatio();
     
-    // Set higher resolution for export
-    renderer.setPixelRatio(2);
-    renderer.setSize(params.width, params.height);
+    const scaleFactor = 4;
+    renderer.setPixelRatio(scaleFactor);
+    renderer.setSize(params.width * scaleFactor, params.height * scaleFactor);
     
-    // Render with enhanced settings
-    renderer.render(sceneRef.current, cameraRef.current);
+    renderer.antialias = true;
+    renderer.setClearColor(0x000000, 0);
     
-    // Create download link
+    for (let i = 0; i < 2; i++) {
+      renderer.render(sceneRef.current, cameraRef.current);
+    }
+    
     const link = document.createElement('a');
-    link.download = 'aerial_view.png';
+    link.download = 'high_quality_aerial_view.png';
     link.href = renderer.domElement.toDataURL('image/png', 1.0);
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
     
-    // Restore original settings
     renderer.setPixelRatio(originalPixelRatio);
     renderer.setSize(originalSize.x, originalSize.y);
   };
 
-  // Initialize Three.js on mount
   useEffect(() => {
     initThreeJS();
     loadGeoTIFF();
@@ -396,7 +371,6 @@ function App() {
     };
   }, []);
   
-  // Handle window resize
   useEffect(() => {
     const handleResize = () => {
       if (rendererRef.current && mountRef.current) {
@@ -412,7 +386,6 @@ function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Update scene when parameters change
   useEffect(() => {
     updateScene();
   }, [params, imageLoaded]);
@@ -422,9 +395,7 @@ function App() {
       <h1>Enhanced Aerial Image Viewer</h1>
       
       <div className="main-container">
-        {/* Left section - Parameters */}
         <div className="left-section">
-          {/* Camera Intrinsic Parameters */}
           <fieldset className="parameter-group">
             <legend>Camera Intrinsic Parameters</legend>
             
@@ -489,7 +460,6 @@ function App() {
             </div>
           </fieldset>
           
-          {/* Camera Extrinsic Parameters */}
           <fieldset className="parameter-group">
             <legend>Camera Extrinsic Parameters</legend>
             
@@ -557,7 +527,6 @@ function App() {
           </fieldset>
         </div>
         
-        {/* Right section - Camera View */}
         <div className="right-section">
           <fieldset className="camera-view">
             <legend>Camera View</legend>
@@ -568,9 +537,6 @@ function App() {
             <div className="canvas-container" ref={mountRef}></div>
             
             <div className="button-container">
-              <button onClick={updateScene} disabled={loading || !imageLoaded}>
-                Generate View
-              </button>
               <button onClick={exportImage} disabled={loading || !imageLoaded}>
                 Export HD Image
               </button>
