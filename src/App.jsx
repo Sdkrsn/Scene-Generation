@@ -116,24 +116,16 @@ function App() {
     parentObjectRef.current = parentObject;
     
     const geometry = new THREE.PlaneGeometry(5, 5, 512, 512);
-    const material = new THREE.MeshStandardMaterial({
+    const material = new THREE.MeshBasicMaterial({
       color: 0xffffff,
-      side: THREE.DoubleSide,
-      roughness: 0.5,
-      metalness: 0.0,
+      side: THREE.DoubleSide, // Changed back to DoubleSide for correct rendering
+      transparent: true,
     });
     const plane = new THREE.Mesh(geometry, material);
     plane.position.set(16, -10, 0);
     plane.scale.set(12, 10, 1);
     parentObject.add(plane);
     planeRef.current = plane; 
-    
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-    scene.add(ambientLight);
-    
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
-    directionalLight.position.set(1, 1, 1);
-    scene.add(directionalLight);
     
     const animate = () => {
       requestAnimationFrame(animate);
@@ -313,11 +305,14 @@ function App() {
     
     const parent = parentObjectRef.current;
     parent.position.set(lonDiff, -latDiff, 0);
-    parent.rotation.set(
-      THREE.MathUtils.degToRad(tilt),
-      THREE.MathUtils.degToRad(pan),
-      0
-    );
+    
+    // Reset rotation first
+    parent.rotation.set(0, 0, 0);
+    
+    // Apply rotations in the correct order
+    // First pan (Y-axis), then tilt (X-axis)
+    parent.rotation.y = THREE.MathUtils.degToRad(pan);
+    parent.rotation.x = THREE.MathUtils.degToRad(-tilt); // Note the negative sign here
     
     const scale = Math.pow(1000 / Math.max(altitude, 10), 0.85);
     parent.scale.set(scale, scale, scale);
