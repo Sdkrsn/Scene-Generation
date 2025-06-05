@@ -160,7 +160,7 @@ function App() {
     });
     const blackPlane = new THREE.Mesh(blackGeometry, blackMaterial);
     blackPlane.position.z = 0;
-    blackPlane.visible = params.altitude > 3000;
+    blackPlane.visible = params.altitude > 2850;
     scene.add(blackPlane);
     blackPlaneRef.current = blackPlane;
     
