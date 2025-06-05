@@ -16,7 +16,11 @@ function App() {
     width: 640,
     height: 480,
     saturation: 2.5,
-    sharpness: 1.2,
+    sharpness: 1.0,
+    roughness: 0.5,
+    contrast: 1.5,
+    edgeEnhancement: 1.0,
+    elevationScale: 0.1
   });
 
   const mountRef = useRef(null);
@@ -47,7 +51,6 @@ function App() {
     }));
   };
 
-  // Function to clean white marks from image
   const cleanWhiteMarks = (imageData, threshold = 230) => {
     const data = imageData.data;
     const width = imageData.width;
@@ -87,6 +90,62 @@ function App() {
     return imageData;
   };
 
+  const generateNormalMap = (imageData, strength = 1.0) => {
+    const width = imageData.width;
+    const height = imageData.height;
+    const normalData = new Uint8ClampedArray(width * height * 4);
+    
+    // Convert to grayscale first
+    const grayData = new Float32Array(width * height);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        grayData[y * width + x] = 
+          (imageData.data[idx] * 0.3 + 
+           imageData.data[idx + 1] * 0.59 + 
+           imageData.data[idx + 2] * 0.11) / 255.0;
+      }
+    }
+    
+    // Generate normal map
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        
+        // Sobel filter for normal calculation
+        const x1 = (x === width - 1) ? x : x + 1;
+        const x0 = (x === 0) ? x : x - 1;
+        const y1 = (y === height - 1) ? y : y + 1;
+        const y0 = (y === 0) ? y : y - 1;
+        
+        const tl = grayData[y0 * width + x0];
+        const t = grayData[y0 * width + x];
+        const tr = grayData[y0 * width + x1];
+        const l = grayData[y * width + x0];
+        const r = grayData[y * width + x1];
+        const bl = grayData[y1 * width + x0];
+        const b = grayData[y1 * width + x];
+        const br = grayData[y1 * width + x1];
+        
+        const dX = (tr + 2 * r + br) - (tl + 2 * l + bl);
+        const dY = (bl + 2 * b + br) - (tl + 2 * t + tr);
+        const dZ = 1.0 / strength;
+        
+        const invLength = 1.0 / Math.sqrt(dX * dX + dY * dY + dZ * dZ);
+        const nX = dX * invLength;
+        const nY = dY * invLength;
+        const nZ = dZ * invLength;
+        
+        normalData[idx] = (nX + 1.0) * 127.5;
+        normalData[idx + 1] = (nY + 1.0) * 127.5;
+        normalData[idx + 2] = (nZ + 1.0) * 127.5;
+        normalData[idx + 3] = 255;
+      }
+    }
+    
+    return new ImageData(normalData, width, height);
+  };
+
   const initThreeJS = () => {
     const scene = sceneRef.current;
     const mount = mountRef.current;
@@ -117,15 +176,26 @@ function App() {
     mount.appendChild(renderer.domElement);
     rendererRef.current = renderer;
     
+    // Add ambient light
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+    
+    // Add directional light for better shading
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(1, 1, 1);
+    scene.add(directionalLight);
+    
     const parentObject = new THREE.Object3D();
     scene.add(parentObject);
     parentObjectRef.current = parentObject;
     
     const geometry = new THREE.PlaneGeometry(5, 5, 512, 512);
-    const material = new THREE.MeshBasicMaterial({
+    const material = new THREE.MeshStandardMaterial({
       color: 0xffffff,
       side: THREE.DoubleSide,
       transparent: true,
+      roughness: params.roughness,
+      metalness: 0.0,
     });
     const plane = new THREE.Mesh(geometry, material);
     plane.position.set(16, -10, 0);
@@ -140,7 +210,7 @@ function App() {
     animate();
   };
 
-  const applyColorCorrection = (imageData, saturation, sharpness) => {
+  const applyColorCorrection = (imageData, saturation, sharpness, contrast, edgeEnhancement) => {
     const data = imageData.data;
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = imageData.width;
@@ -148,47 +218,62 @@ function App() {
     const tempCtx = tempCanvas.getContext('2d');
     
     tempCtx.putImageData(imageData, 0, 0);
-    tempCtx.filter = `saturate(${saturation}) contrast(1.05) brightness(1.02)`;
+    tempCtx.filter = `saturate(${saturation}) contrast(${contrast}) brightness(1.02)`;
     tempCtx.drawImage(tempCanvas, 0, 0);
     
     const correctedData = tempCtx.getImageData(0, 0, imageData.width, imageData.height);
     
-    if (sharpness > 1) {
-      const sharpenedData = unsharpMask(correctedData, sharpness);
+    if (sharpness > 1 || edgeEnhancement > 1) {
+      const sharpenedData = enhancedUnsharpMask(correctedData, sharpness, edgeEnhancement);
       return sharpenedData;
     }
     
     return correctedData;
   };
 
-  const unsharpMask = (imageData, amount) => {
+  const enhancedUnsharpMask = (imageData, sharpness, edgeEnhancement) => {
     const width = imageData.width;
     const height = imageData.height;
     const srcData = imageData.data;
     const dstData = new Uint8ClampedArray(srcData.length);
     
-    const kernel = [
+    // Edge detection kernel
+    const edgeKernel = [
+      [-1, -1, -1],
+      [-1,  8, -1],
+      [-1, -1, -1]
+    ];
+    
+    // Sharpening kernel
+    const sharpKernel = [
       [0, -0.2, 0],
       [-0.2, 1.8, -0.2],
       [0, -0.2, 0]
     ];
     
-    const strength = (amount - 1) * 0.3;
-    kernel[1][1] += strength;
+    const strength = (sharpness - 1) * 0.3;
+    sharpKernel[1][1] += strength;
     
     for (let y = 1; y < height - 1; y++) {
       for (let x = 1; x < width - 1; x++) {
         for (let c = 0; c < 3; c++) {
-          let sum = 0;
+          let sharpSum = 0;
+          let edgeSum = 0;
+          
           for (let ky = -1; ky <= 1; ky++) {
             for (let kx = -1; kx <= 1; kx++) {
               const idx = ((y + ky) * width + (x + kx)) * 4 + c;
-              const weight = kernel[ky + 1][kx + 1];
-              sum += srcData[idx] * weight;
+              const weightSharp = sharpKernel[ky + 1][kx + 1];
+              const weightEdge = edgeKernel[ky + 1][kx + 1];
+              sharpSum += srcData[idx] * weightSharp;
+              edgeSum += srcData[idx] * weightEdge;
             }
           }
+          
           const dstIdx = (y * width + x) * 4 + c;
-          dstData[dstIdx] = Math.max(0, Math.min(255, sum));
+          const edgeValue = Math.max(0, Math.min(255, edgeSum * edgeEnhancement * 0.25));
+          const sharpValue = Math.max(0, Math.min(255, sharpSum));
+          dstData[dstIdx] = Math.max(0, Math.min(255, sharpValue + edgeValue));
         }
         dstData[(y * width + x) * 4 + 3] = 255;
       }
@@ -256,13 +341,24 @@ function App() {
       // Clean white marks before color correction
       const cleanedData = cleanWhiteMarks(imageData);
       
+      // Generate normal map from the original data
+      const normalMapData = generateNormalMap(cleanedData, params.elevationScale);
+      const normalCanvas = document.createElement('canvas');
+      normalCanvas.width = width;
+      normalCanvas.height = height;
+      const normalCtx = normalCanvas.getContext('2d');
+      normalCtx.putImageData(normalMapData, 0, 0);
+      
       const correctedData = applyColorCorrection(
         cleanedData,
         params.saturation,
-        params.sharpness
+        params.sharpness,
+        params.contrast,
+        params.edgeEnhancement
       );
       ctx.putImageData(correctedData, 0, 0);
       
+      // Create textures
       const texture = new THREE.CanvasTexture(canvas);
       texture.anisotropy = rendererRef.current.capabilities.getMaxAnisotropy();
       texture.minFilter = THREE.LinearMipmapLinearFilter;
@@ -270,12 +366,28 @@ function App() {
       texture.generateMipmaps = true;
       texture.encoding = THREE.sRGBEncoding;
       
+      const normalMap = new THREE.CanvasTexture(normalCanvas);
+      normalMap.anisotropy = rendererRef.current.capabilities.getMaxAnisotropy();
+      normalMap.minFilter = THREE.LinearMipmapLinearFilter;
+      normalMap.magFilter = THREE.LinearFilter;
+      normalMap.generateMipmaps = true;
+      
       if (planeRef.current) {
         const aspectRatio = width / height;
         planeRef.current.geometry.dispose();
         planeRef.current.geometry = new THREE.PlaneGeometry(aspectRatio * 5, 5, 256, 256);
-        planeRef.current.material.map = texture;
-        planeRef.current.material.needsUpdate = true;
+        
+        // Update material with new properties
+        planeRef.current.material.dispose();
+        planeRef.current.material = new THREE.MeshStandardMaterial({
+          map: texture,
+          normalMap: normalMap,
+          roughness: params.roughness,
+          metalness: 0.0,
+          side: THREE.DoubleSide,
+          transparent: true
+        });
+        
         setImageLoaded(true);
       }
       
@@ -333,6 +445,12 @@ function App() {
       exportCameraRef.current.fov = fov;
       exportCameraRef.current.aspect = params.width / params.height;
       exportCameraRef.current.updateProjectionMatrix();
+    }
+    
+    // Update material properties if they exist
+    if (planeRef.current?.material) {
+      planeRef.current.material.roughness = params.roughness;
+      planeRef.current.material.needsUpdate = true;
     }
   };
 
