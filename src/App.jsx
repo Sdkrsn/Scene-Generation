@@ -15,7 +15,7 @@ function App() {
     pixelSizeY: 0.000035,
     width: 640,
     height: 480,
-    saturation: 2.3,
+    saturation: 2.5,
     sharpness: 1.2,
   });
 
@@ -29,6 +29,7 @@ function App() {
   const rendererRef = useRef(null);
   const planeRef = useRef(null);
   const parentObjectRef = useRef(null);
+  const exportCameraRef = useRef(null);
   
   const centerLat = 12.9611;
   const centerLon = 77.6532;
@@ -99,6 +100,11 @@ function App() {
     camera.position.z = 5;
     cameraRef.current = camera;
     
+    // Create a separate camera for exports
+    const exportCamera = new THREE.PerspectiveCamera(75, params.width / params.height, 0.1, 1000);
+    exportCamera.position.z = 5;
+    exportCameraRef.current = exportCamera;
+    
     const renderer = new THREE.WebGLRenderer({ 
       antialias: true,
       preserveDrawingBuffer: true,
@@ -118,7 +124,7 @@ function App() {
     const geometry = new THREE.PlaneGeometry(5, 5, 512, 512);
     const material = new THREE.MeshBasicMaterial({
       color: 0xffffff,
-      side: THREE.DoubleSide, // Changed back to DoubleSide for correct rendering
+      side: THREE.DoubleSide,
       transparent: true,
     });
     const plane = new THREE.Mesh(geometry, material);
@@ -321,38 +327,73 @@ function App() {
     const fov = 2 * Math.atan(sensorHeight / (2 * focalLength)) * (180 / Math.PI);
     cameraRef.current.fov = fov;
     cameraRef.current.updateProjectionMatrix();
+    
+    // Also update the export camera
+    if (exportCameraRef.current) {
+      exportCameraRef.current.fov = fov;
+      exportCameraRef.current.aspect = params.width / params.height;
+      exportCameraRef.current.updateProjectionMatrix();
+    }
   };
 
   const exportImage = () => {
-    if (!rendererRef.current || !imageLoaded) {
+    if (!rendererRef.current || !imageLoaded || !exportCameraRef.current) {
       setError("Scene not ready for export");
       return;
     }
     
     const renderer = rendererRef.current;
-    const originalSize = renderer.getSize(new THREE.Vector2());
+    const scene = sceneRef.current;
+    
+    // Store original settings
+    const originalSize = new THREE.Vector2();
+    renderer.getSize(originalSize);
     const originalPixelRatio = renderer.getPixelRatio();
+    const originalCamera = cameraRef.current;
     
-    const scaleFactor = 4;
-    renderer.setPixelRatio(scaleFactor);
-    renderer.setSize(params.width * scaleFactor, params.height * scaleFactor);
-    
-    renderer.antialias = true;
-    renderer.setClearColor(0x000000, 0);
-    
-    for (let i = 0; i < 2; i++) {
-      renderer.render(sceneRef.current, cameraRef.current);
+    try {
+      // Create a temporary canvas for high-quality export
+      const exportCanvas = document.createElement('canvas');
+      exportCanvas.width = params.width;
+      exportCanvas.height = params.height;
+      
+      // Create a temporary renderer for export
+      const exportRenderer = new THREE.WebGLRenderer({
+        canvas: exportCanvas,
+        antialias: true,
+        preserveDrawingBuffer: true,
+        powerPreference: "high-performance"
+      });
+      exportRenderer.setPixelRatio(1); // We'll handle scaling ourselves
+      exportRenderer.setSize(params.width, params.height);
+      exportRenderer.setClearColor(0x000000, 0);
+      
+      // Copy camera settings to export camera
+      exportCameraRef.current.position.copy(originalCamera.position);
+      exportCameraRef.current.rotation.copy(originalCamera.rotation);
+      exportCameraRef.current.fov = originalCamera.fov;
+      exportCameraRef.current.aspect = params.width / params.height;
+      exportCameraRef.current.updateProjectionMatrix();
+      
+      // Render to the export canvas
+      exportRenderer.render(scene, exportCameraRef.current);
+      
+      // Create download link
+      const link = document.createElement('a');
+      link.download = `aerial_view_${params.width}x${params.height}.png`;
+      link.href = exportCanvas.toDataURL('image/png', 1.0);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+    } catch (err) {
+      console.error("Export error:", err);
+      setError(`Failed to export image: ${err.message}`);
+    } finally {
+      // Restore original settings
+      renderer.setPixelRatio(originalPixelRatio);
+      renderer.setSize(originalSize.x, originalSize.y);
     }
-    
-    const link = document.createElement('a');
-    link.download = 'high_quality_aerial_view.png';
-    link.href = renderer.domElement.toDataURL('image/png', 1.0);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    renderer.setPixelRatio(originalPixelRatio);
-    renderer.setSize(originalSize.x, originalSize.y);
   };
 
   useEffect(() => {
