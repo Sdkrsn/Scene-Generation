@@ -17,8 +17,8 @@ function App() {
     height: 480,
     saturation: 2.5,
     sharpness: 1.2,
-    roughness: 0.1, // Added roughness parameter
-    contrast: 1.3, // Added contrast parameter
+    roughness: 0.1,
+    contrast: 1.3,
   });
 
   const mountRef = useRef(null);
@@ -32,6 +32,7 @@ function App() {
   const planeRef = useRef(null);
   const parentObjectRef = useRef(null);
   const exportCameraRef = useRef(null);
+  const blackPlaneRef = useRef(null);
   
   const centerLat = 12.9611;
   const centerLon = 77.6532;
@@ -49,7 +50,6 @@ function App() {
     }));
   };
 
-  // Function to clean white marks from image
   const cleanWhiteMarks = (imageData, threshold = 230) => {
     const data = imageData.data;
     const width = imageData.width;
@@ -93,6 +93,11 @@ function App() {
     const scene = sceneRef.current;
     const mount = mountRef.current;
     
+    // Clear previous renderer if exists
+    if (rendererRef.current && mount.contains(rendererRef.current.domElement)) {
+      mount.removeChild(rendererRef.current.domElement);
+    }
+    
     while(scene.children.length > 0) { 
       scene.remove(scene.children[0]); 
     }
@@ -102,7 +107,6 @@ function App() {
     camera.position.z = 5;
     cameraRef.current = camera;
     
-    // Create a separate camera for exports
     const exportCamera = new THREE.PerspectiveCamera(75, params.width / params.height, 0.1, 1000);
     exportCamera.position.z = 5;
     exportCameraRef.current = exportCamera;
@@ -119,6 +123,18 @@ function App() {
     mount.appendChild(renderer.domElement);
     rendererRef.current = renderer;
     
+    // Create black plane that will cover the view when altitude > 3000m
+    const blackGeometry = new THREE.PlaneGeometry(20, 20);
+    const blackMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0x000000,
+      transparent: false
+    });
+    const blackPlane = new THREE.Mesh(blackGeometry, blackMaterial);
+    blackPlane.position.z = 0;
+    blackPlane.visible = params.altitude > 3000;
+    scene.add(blackPlane);
+    blackPlaneRef.current = blackPlane;
+    
     const parentObject = new THREE.Object3D();
     scene.add(parentObject);
     parentObjectRef.current = parentObject;
@@ -133,7 +149,7 @@ function App() {
     plane.position.set(16, -10, 0);
     plane.scale.set(12, 10, 1);
     parentObject.add(plane);
-    planeRef.current = plane; 
+    planeRef.current = plane;
     
     const animate = () => {
       requestAnimationFrame(animate);
@@ -149,7 +165,6 @@ function App() {
     tempCanvas.height = imageData.height;
     const tempCtx = tempCanvas.getContext('2d');
     
-    // Apply roughness effect
     if (roughness > 0) {
       const roughnessData = applyRoughness(imageData, roughness);
       tempCtx.putImageData(roughnessData, 0, 0);
@@ -282,7 +297,6 @@ function App() {
         }
       }
       
-      // Clean white marks before color correction
       const cleanedData = cleanWhiteMarks(imageData);
       
       const correctedData = applyColorCorrection(
@@ -319,8 +333,15 @@ function App() {
   };
 
   const updateScene = () => {
-    if (!parentObjectRef.current || !cameraRef.current) {
-      setError("Three.js scene not initialized");
+    if (!parentObjectRef.current || !cameraRef.current || !blackPlaneRef.current) {
+      return;
+    }
+    
+    // Update black plane visibility based on altitude
+    blackPlaneRef.current.visible = params.altitude > 3000;
+    
+    // If altitude is over 3000m, we don't need to update the rest of the scene
+    if (params.altitude > 3000) {
       return;
     }
     
@@ -343,13 +364,9 @@ function App() {
     const parent = parentObjectRef.current;
     parent.position.set(lonDiff, -latDiff, 0);
     
-    // Reset rotation first
     parent.rotation.set(0, 0, 0);
-    
-    // Apply rotations in the correct order
-    // First pan (Y-axis), then tilt (X-axis)
     parent.rotation.y = THREE.MathUtils.degToRad(pan);
-    parent.rotation.x = THREE.MathUtils.degToRad(-tilt); // Note the negative sign here
+    parent.rotation.x = THREE.MathUtils.degToRad(-tilt);
     
     const scale = Math.pow(1100 / Math.max(altitude, 10), 0.85);
     parent.scale.set(scale, scale, scale);
@@ -359,7 +376,6 @@ function App() {
     cameraRef.current.fov = fov;
     cameraRef.current.updateProjectionMatrix();
     
-    // Also update the export camera
     if (exportCameraRef.current) {
       exportCameraRef.current.fov = fov;
       exportCameraRef.current.aspect = params.width / params.height;
@@ -376,40 +392,34 @@ function App() {
     const renderer = rendererRef.current;
     const scene = sceneRef.current;
     
-    // Store original settings
     const originalSize = new THREE.Vector2();
     renderer.getSize(originalSize);
     const originalPixelRatio = renderer.getPixelRatio();
     const originalCamera = cameraRef.current;
     
     try {
-      // Create a temporary canvas for high-quality export
       const exportCanvas = document.createElement('canvas');
       exportCanvas.width = params.width;
       exportCanvas.height = params.height;
       
-      // Create a temporary renderer for export
       const exportRenderer = new THREE.WebGLRenderer({
         canvas: exportCanvas,
         antialias: true,
         preserveDrawingBuffer: true,
         powerPreference: "high-performance"
       });
-      exportRenderer.setPixelRatio(1); // We'll handle scaling ourselves
+      exportRenderer.setPixelRatio(1);
       exportRenderer.setSize(params.width, params.height);
       exportRenderer.setClearColor(0x000000, 0);
       
-      // Copy camera settings to export camera
       exportCameraRef.current.position.copy(originalCamera.position);
       exportCameraRef.current.rotation.copy(originalCamera.rotation);
       exportCameraRef.current.fov = originalCamera.fov;
       exportCameraRef.current.aspect = params.width / params.height;
       exportCameraRef.current.updateProjectionMatrix();
       
-      // Render to the export canvas
       exportRenderer.render(scene, exportCameraRef.current);
       
-      // Create download link
       const link = document.createElement('a');
       link.download = `aerial_view_${params.width}x${params.height}.png`;
       link.href = exportCanvas.toDataURL('image/png', 1.0);
@@ -421,7 +431,6 @@ function App() {
       console.error("Export error:", err);
       setError(`Failed to export image: ${err.message}`);
     } finally {
-      // Restore original settings
       renderer.setPixelRatio(originalPixelRatio);
       renderer.setSize(originalSize.x, originalSize.y);
     }
