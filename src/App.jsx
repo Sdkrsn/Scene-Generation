@@ -19,6 +19,7 @@ function App() {
     sharpness: 1.2,
     roughness: 0.1,
     contrast: 1.3,
+    curvature: 1.0, // Added curvature parameter
   });
 
   const mountRef = useRef(null);
@@ -48,6 +49,34 @@ function App() {
       ...prev,
       [name]: numValue,
     }));
+  };
+
+  // Function to apply curvature to the plane
+  const applyCurvature = (plane, curvature) => {
+    if (!plane || !plane.geometry) return;
+    
+    const position = plane.geometry.attributes.position;
+    const originalPositions = position.array.slice();
+    
+    // Earth's approximate radius in meters (scaled down for our scene)
+    const earthRadius = 6371000 / 1000; // Scaling down for our scene
+    
+    for (let i = 0; i < position.count; i++) {
+      const x = originalPositions[i * 3];
+      const y = originalPositions[i * 3 + 1];
+      
+      // Calculate distance from center
+      const distance = Math.sqrt(x * x + y * y);
+      
+      // Apply curvature based on distance
+      const curvatureEffect = curvature * (distance * distance) / (2 * earthRadius);
+      
+      // Modify Z position based on curvature
+      position.setZ(i, -curvatureEffect);
+    }
+    
+    position.needsUpdate = true;
+    plane.geometry.computeVertexNormals();
   };
 
   const cleanWhiteMarks = (imageData, threshold = 230) => {
@@ -150,6 +179,9 @@ function App() {
     plane.scale.set(12, 10, 1);
     parentObject.add(plane);
     planeRef.current = plane;
+    
+    // Apply initial curvature
+    applyCurvature(plane, params.curvature);
     
     const animate = () => {
       requestAnimationFrame(animate);
@@ -321,6 +353,9 @@ function App() {
         planeRef.current.geometry = new THREE.PlaneGeometry(aspectRatio * 5, 5, 256, 256);
         planeRef.current.material.map = texture;
         planeRef.current.material.needsUpdate = true;
+        
+        // Apply curvature after loading new geometry
+        applyCurvature(planeRef.current, params.curvature);
         setImageLoaded(true);
       }
       
@@ -380,6 +415,11 @@ function App() {
       exportCameraRef.current.fov = fov;
       exportCameraRef.current.aspect = params.width / params.height;
       exportCameraRef.current.updateProjectionMatrix();
+    }
+    
+    // Apply curvature whenever scene updates
+    if (planeRef.current) {
+      applyCurvature(planeRef.current, params.curvature);
     }
   };
 
@@ -599,6 +639,21 @@ function App() {
                 onChange={handleChange}
                 min="0.1"
               />
+            </div>
+            
+            <div className="input-group">
+              <label htmlFor="curvature">Earth Curvature:</label>
+              <input
+                type="range"
+                id="curvature"
+                name="curvature"
+                value={params.curvature}
+                onChange={handleChange}
+                min="0"
+                max="1"
+                step="0.01"
+              />
+              <span>{params.curvature.toFixed(2)}</span>
             </div>
           </fieldset>
         </div>
