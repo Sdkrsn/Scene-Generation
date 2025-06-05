@@ -1,4 +1,4 @@
-/* Cyberpunk-inspired UI with radiant glow effects */
+/* Cyberpunk-inspired UI with radiant glow effects - Mobile Optimized */
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: radial-gradient(ellipse at center, #0a0e24 0%, #000000 100%);
@@ -38,25 +38,24 @@ h1 {
   display: flex;
   flex: 1;
   gap: 10px;
-  overflow: hidden;
+  overflow: auto;
   flex-direction: column;
 }
 
 /* Left section - Parameters */
 .left-section {
   flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
-  overflow: hidden;
-  padding-right: 5px;
+  overflow: auto;
 }
 
 /* Right section - Camera View */
 .right-section {
-  flex: 1.5;
+  flex: 1;
+  min-height: 40vh;
   display: flex;
-  min-height: 0;
 }
 
 .parameter-group, .camera-view {
@@ -100,34 +99,44 @@ h1 {
 }
 
 .parameter-group {
-  overflow: hidden;
+  overflow: auto;
 }
 
 .parameter-group-content {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
-  overflow: auto;
-  height: 100%;
+  overflow: visible;
 }
 
 .parameter-subgroup {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  overflow: hidden;
+  overflow: visible;
 }
 
-legend {
-  font-weight: bold;
-  color: #00f7ff;
-  padding: 3px 8px;
-  background: linear-gradient(90deg, rgba(0, 123, 255, 0.2), rgba(0, 247, 255, 0.2));
-  border-radius: 4px;
-  font-size: 0.8rem;
-  white-space: nowrap;
-  text-shadow: 0 0 5px #00f7ff;
-  border-left: 3px solid #00f7ff;
+/* Pan-tilt container */
+.pan-tilt-container {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.pan-tilt-container > div {
+  flex: 1;
+}
+
+/* Coordinates container - horizontal on mobile */
+.coordinates-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.coordinates-container .input-group {
+  flex: 1;
+  min-width: calc(50% - 4px);
 }
 
 .input-group {
@@ -141,6 +150,18 @@ legend {
 
 .input-group.horizontal > div {
   flex: 1;
+}
+
+legend {
+  font-weight: bold;
+  color: #00f7ff;
+  padding: 3px 8px;
+  background: linear-gradient(90deg, rgba(0, 123, 255, 0.2), rgba(0, 247, 255, 0.2));
+  border-radius: 4px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  text-shadow: 0 0 5px #00f7ff;
+  border-left: 3px solid #00f7ff;
 }
 
 label {
@@ -219,6 +240,12 @@ input[type="number"]:focus {
   display: flex;
   gap: 8px;
   margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.button-container button {
+  flex: 1;
+  min-width: calc(50% - 4px);
 }
 
 button {
@@ -228,7 +255,6 @@ button {
   background: linear-gradient(135deg, #007bff, #00aaff);
   color: white;
   cursor: pointer;
-  flex: 1;
   font-weight: bold;
   transition: all 0.3s;
   font-size: 0.8rem;
@@ -297,20 +323,73 @@ button:disabled {
   box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
 }
 
-/* Media query for larger screens */
+/* Mobile-first styles */
+@media (max-width: 767px) {
+  .main-container {
+    flex-direction: column;
+    overflow: auto;
+  }
+  
+  .left-section {
+    order: 2;
+    flex: none;
+    height: auto;
+  }
+  
+  .right-section {
+    order: 1;
+    flex: none;
+    min-height: 40vh;
+    max-height: 40vh;
+  }
+  
+  .coordinates-container {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  
+  .coordinates-container .input-group {
+    flex: 1 0 calc(50% - 8px);
+    min-width: calc(50% - 8px);
+  }
+  
+  .button-container button {
+    flex: 1 0 calc(50% - 8px);
+  }
+}
+
+/* Desktop styles */
 @media (min-width: 768px) {
   .main-container {
     flex-direction: row;
   }
   
   .left-section {
+    flex: 1;
+    display: grid;
     grid-template-columns: 1fr;
     gap: 10px;
+    order: 1;
+  }
+  
+  .right-section {
+    flex: 1.5;
+    order: 2;
+    min-height: auto;
+    max-height: none;
   }
   
   .parameter-group-content {
     grid-template-columns: 1fr 1fr;
     gap: 15px;
+  }
+  
+  .coordinates-container {
+    flex-direction: column;
+  }
+  
+  .coordinates-container .input-group {
+    min-width: 100%;
   }
   
   h1 {
@@ -341,7 +420,7 @@ button:disabled {
 }
 
 /* Ultra-compact mode for very small screens */
-@media (max-height: 600px) {
+@media (max-height: 600px) and (max-width: 767px) {
   .app-container {
     padding: 8px;
   }
@@ -368,5 +447,14 @@ button:disabled {
   button {
     padding: 6px 8px;
     font-size: 0.75rem;
+  }
+  
+  .coordinates-container .input-group {
+    flex: 1 0 100%;
+    min-width: 100%;
+  }
+  
+  .button-container button {
+    flex: 1 0 100%;
   }
 }

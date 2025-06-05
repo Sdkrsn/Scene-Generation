@@ -640,21 +640,6 @@ function App() {
                 min="0.1"
               />
             </div>
-            
-            <div className="input-group">
-              <label htmlFor="curvature">Earth Curvature:</label>
-              <input
-                type="range"
-                id="curvature"
-                name="curvature"
-                value={params.curvature}
-                onChange={handleChange}
-                min="0"
-                max="1"
-                step="0.01"
-              />
-              <span>{params.curvature.toFixed(2)}</span>
-            </div>
           </fieldset>
         </div>
         
