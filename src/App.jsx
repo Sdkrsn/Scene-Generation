@@ -320,7 +320,7 @@ function App() {
     parent.rotation.y = THREE.MathUtils.degToRad(pan);
     parent.rotation.x = THREE.MathUtils.degToRad(-tilt); // Note the negative sign here
     
-    const scale = Math.pow(1000 / Math.max(altitude, 10), 0.85);
+    const scale = Math.pow(1100 / Math.max(altitude, 10), 0.85);
     parent.scale.set(scale, scale, scale);
     
     const sensorHeight = pixelSizeY * height;
