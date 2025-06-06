@@ -19,7 +19,7 @@ function App() {
     sharpness: 1.2,
     roughness: 0.1,
     contrast: 1.3,
-    curvature: 1.0,
+    curvature: 1.9,
   });
 
   const mountRef = useRef(null);
