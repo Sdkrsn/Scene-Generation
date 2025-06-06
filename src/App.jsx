@@ -20,6 +20,7 @@ function App() {
     roughness: 0.1,
     contrast: 1.3,
     curvature: 1.9,
+    brightness: 0.7, // Added brightness parameter
   });
 
   const mountRef = useRef(null);
@@ -181,7 +182,7 @@ function App() {
     animate();
   };
 
-  const applyColorCorrection = (imageData, saturation, sharpness, contrast, roughness) => {
+  const applyColorCorrection = (imageData, saturation, sharpness, contrast, roughness, brightness) => {
     const data = imageData.data;
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = imageData.width;
@@ -195,7 +196,7 @@ function App() {
       tempCtx.putImageData(imageData, 0, 0);
     }
     
-    tempCtx.filter = `saturate(${saturation}) contrast(${contrast}) brightness(1.02)`;
+    tempCtx.filter = `saturate(${saturation}) contrast(${contrast}) brightness(${brightness})`;
     tempCtx.drawImage(tempCanvas, 0, 0);
     
     const correctedData = tempCtx.getImageData(0, 0, imageData.width, imageData.height);
@@ -327,7 +328,8 @@ function App() {
         params.saturation,
         params.sharpness,
         params.contrast,
-        params.roughness
+        params.roughness,
+        params.brightness
       );
       ctx.putImageData(correctedData, 0, 0);
       
