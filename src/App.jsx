@@ -19,7 +19,7 @@ function App() {
     sharpness: 1.2,
     roughness: 0.1,
     contrast: 1.3,
-    curvature: 1.0, // Added curvature parameter
+    curvature: 1.0,
   });
 
   const mountRef = useRef(null);
@@ -51,27 +51,19 @@ function App() {
     }));
   };
 
-  // Function to apply curvature to the plane
   const applyCurvature = (plane, curvature) => {
     if (!plane || !plane.geometry) return;
     
     const position = plane.geometry.attributes.position;
     const originalPositions = position.array.slice();
     
-    // Earth's approximate radius in meters (scaled down for our scene)
-    const earthRadius = 6371000 / 1000; // Scaling down for our scene
+    const earthRadius = 6371000 / 1000;
     
     for (let i = 0; i < position.count; i++) {
       const x = originalPositions[i * 3];
       const y = originalPositions[i * 3 + 1];
-      
-      // Calculate distance from center
       const distance = Math.sqrt(x * x + y * y);
-      
-      // Apply curvature based on distance
       const curvatureEffect = curvature * (distance * distance) / (2 * earthRadius);
-      
-      // Modify Z position based on curvature
       position.setZ(i, -curvatureEffect);
     }
     
@@ -122,7 +114,6 @@ function App() {
     const scene = sceneRef.current;
     const mount = mountRef.current;
     
-    // Clear previous renderer if exists
     if (rendererRef.current && mount.contains(rendererRef.current.domElement)) {
       mount.removeChild(rendererRef.current.domElement);
     }
@@ -152,14 +143,15 @@ function App() {
     mount.appendChild(renderer.domElement);
     rendererRef.current = renderer;
     
-    // Create black plane that will cover the view when altitude > 3000m
+    // Create black plane that covers the entire view when altitude > 2850m
     const blackGeometry = new THREE.PlaneGeometry(20, 20);
     const blackMaterial = new THREE.MeshBasicMaterial({ 
       color: 0x000000,
       transparent: false
     });
     const blackPlane = new THREE.Mesh(blackGeometry, blackMaterial);
-    blackPlane.position.z = 0;
+    blackPlane.position.z = 0.1; // Slightly in front of other objects
+    blackPlane.scale.set(100,100,1);
     blackPlane.visible = params.altitude > 2850;
     scene.add(blackPlane);
     blackPlaneRef.current = blackPlane;
@@ -180,7 +172,6 @@ function App() {
     parentObject.add(plane);
     planeRef.current = plane;
     
-    // Apply initial curvature
     applyCurvature(plane, params.curvature);
     
     const animate = () => {
@@ -354,7 +345,6 @@ function App() {
         planeRef.current.material.map = texture;
         planeRef.current.material.needsUpdate = true;
         
-        // Apply curvature after loading new geometry
         applyCurvature(planeRef.current, params.curvature);
         setImageLoaded(true);
       }
@@ -372,11 +362,11 @@ function App() {
       return;
     }
     
-    // Update black plane visibility based on altitude
-    blackPlaneRef.current.visible = params.altitude > 3000;
+    // Update black plane visibility based on altitude (changed to 2850)
+    blackPlaneRef.current.visible = params.altitude > 2850;
     
-    // If altitude is over 3000m, we don't need to update the rest of the scene
-    if (params.altitude > 3000) {
+    // If altitude is over 2850m, we don't need to update the rest of the scene
+    if (params.altitude > 2850) {
       return;
     }
     
@@ -417,7 +407,6 @@ function App() {
       exportCameraRef.current.updateProjectionMatrix();
     }
     
-    // Apply curvature whenever scene updates
     if (planeRef.current) {
       applyCurvature(planeRef.current, params.curvature);
     }
