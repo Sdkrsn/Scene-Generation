@@ -153,7 +153,7 @@ function App() {
     const blackPlane = new THREE.Mesh(blackGeometry, blackMaterial);
     blackPlane.position.z = 0.1; // Slightly in front of other objects
     blackPlane.scale.set(100,100,1);
-    blackPlane.visible = params.altitude > 2850;
+    blackPlane.visible = params.altitude > 2850 || params.altitude <= 10;
     scene.add(blackPlane);
     blackPlaneRef.current = blackPlane;
     
@@ -571,7 +571,7 @@ function App() {
             <legend>Camera Extrinsic Parameters</legend>
             
             <div className="input-group">
-              <label htmlFor="pan">Pan (deg):</label>
+              <label htmlFor="pan">Pan (deg): [0 to 360]</label>
               <input
                 type="number"
                 id="pan"
@@ -584,7 +584,7 @@ function App() {
             </div>
             
             <div className="input-group">
-              <label htmlFor="tilt">Tilt (deg):</label>
+              <label htmlFor="tilt">Tilt (deg): [-45 to 45]</label>
               <input
                 type="number"
                 id="tilt"
@@ -621,7 +621,7 @@ function App() {
             </div>
             
             <div className="input-group">
-              <label htmlFor="altitude">Altitude (m):</label>
+              <label htmlFor="altitude">Altitude (m): [10 to 2850]</label>
               <input
                 type="number"
                 id="altitude"
